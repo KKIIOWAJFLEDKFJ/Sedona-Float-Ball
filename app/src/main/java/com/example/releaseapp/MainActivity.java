@@ -1,32 +1,47 @@
 package com.example.releaseapp;
 
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.graphics.Color;
+import android.graphics.drawable.ColorDrawable;
 import android.net.Uri;
 import android.os.Bundle;
 import android.provider.Settings;
-import android.view.View;
-import android.view.ViewGroup;
-import android.widget.LinearLayout;
+import android.text.style.ForegroundColorSpan;
+import android.widget.EditText;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 
+import com.prolificinteractive.materialcalendarview.CalendarDay;
+import com.prolificinteractive.materialcalendarview.DayViewDecorator;
+import com.prolificinteractive.materialcalendarview.DayViewFacade;
+import com.prolificinteractive.materialcalendarview.MaterialCalendarView;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 
 public class MainActivity extends AppCompatActivity {
 
-    private TextView tvTodayCount;
+    private MaterialCalendarView calendarView;
+    private TextView tvSelectedDateStat;
+    private EditText etTarget;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        tvTodayCount = findViewById(R.id.tv_main_today_count);
+        // 1. 初始化控件 (注意类型必须是 MaterialCalendarView)
+        calendarView = findViewById(R.id.calendar_view);
+        tvSelectedDateStat = findViewById(R.id.tv_selected_date_stat);
+        etTarget = findViewById(R.id.et_release_target); // 别忘了在布局里加这个ID
 
-        // 权限检查：如果没权限，跳转设置
+        // 权限检查
         if (!Settings.canDrawOverlays(this)) {
             Intent intent = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
                     Uri.parse("package:" + getPackageName()));
@@ -34,81 +49,128 @@ public class MainActivity extends AppCompatActivity {
         }
 
         // 按钮点击事件
-        findViewById(R.id.btn_mode_simple).setOnClickListener(v -> saveModeAndStart(false));
-        findViewById(R.id.btn_mode_complex).setOnClickListener(v -> saveModeAndStart(true));
+        findViewById(R.id.btn_mode_direct).setOnClickListener(v -> saveModeAndStart(0));
+        findViewById(R.id.btn_mode_simple).setOnClickListener(v -> saveModeAndStart(1));
+        findViewById(R.id.btn_mode_complex).setOnClickListener(v -> saveModeAndStart(2));
 
-        refreshStats();
+        // 2. MaterialCalendarView 的监听器和原生不一样，改成这个：
+        calendarView.setOnDateChangedListener((widget, date, selected) -> {
+            String dateKey = String.format(Locale.getDefault(), "%04d-%02d-%02d",
+                    date.getYear(), date.getMonth(), date.getDay());
+            int count = ReleaseStats.getCountByDate(MainActivity.this, dateKey);
+
+            if (count > 0) {
+                tvSelectedDateStat.setText(dateKey + " 释放了 " + count + " 次");
+                tvSelectedDateStat.setTextColor(Color.parseColor("#4CAF50"));
+            } else {
+                tvSelectedDateStat.setText(dateKey + " 尚未进行释放练习");
+                tvSelectedDateStat.setTextColor(Color.parseColor("#999999"));
+            }
+        });
+
+        refreshCalendar();
     }
 
     @Override
     protected void onResume() {
         super.onResume();
-        // 每次回到主页（比如关掉弹窗后），自动刷新统计数字和列表
-        refreshStats();
+        refreshCalendar();
     }
 
-    private void refreshStats() {
-        // 1. 更新顶部今日释放次数数字
-        int count = ReleaseStats.getTodayCount(this);
-        tvTodayCount.setText(String.valueOf(count));
+    private void refreshCalendar() {
+        // 💡 重点：先清空旧的装饰器，防止重复叠加
+        calendarView.removeDecorators();
+        SharedPreferences prefs = getSharedPreferences("release_stats_permanent", MODE_PRIVATE);
 
-        // 2. 动态更新历史记录列表
-        LinearLayout container = findViewById(R.id.history_list_container);
-        if (container == null) return;
+        // 用 Map 存储，方便 Decorator 读取对应的次数
+        Map<CalendarDay, Integer> allData = new HashMap<>();
 
-        container.removeAllViews();
 
-        List<ReleaseStats.DayStat> stats = ReleaseStats.getLast7DaysStats(this);
+//        SharedPreferences prefs = getSharedPreferences("release_stats_permanent", MODE_PRIVATE);
 
-        for (ReleaseStats.DayStat stat : stats) {
-            // 使用系统自带的双行布局作为模板
-            View itemView = getLayoutInflater().inflate(android.R.layout.simple_list_item_2, null);
-            TextView text1 = itemView.findViewById(android.R.id.text1);
-            TextView text2 = itemView.findViewById(android.R.id.text2);
+        // 💡 必须先声明这些 List，否则会报 NullPointerException
+        List<CalendarDay> level1 = new ArrayList<>();
+        List<CalendarDay> level2 = new ArrayList<>();
+        List<CalendarDay> level3 = new ArrayList<>();
+        List<CalendarDay> level4 = new ArrayList<>();
 
-            // 设置日期文字样式
-            text1.setText(stat.dateLabel);
-            text1.setTextSize(15); // SP单位
-            text1.setTextColor(Color.parseColor("#333333"));
+        Map<String, ?> allEntries = prefs.getAll();
+        for (Map.Entry<String, ?> entry : allEntries.entrySet()) {
+            String key = entry.getKey();
+            // 过滤掉目标数据，只处理日期数据
+            if (key.contains("_") || !(entry.getValue() instanceof Integer)) continue;
 
-            // 设置次数文字样式
-            text2.setText(stat.count + " 次释放");
-            text2.setTextSize(14);
-            // 如果次数大于0，用绿色显示，更有成就感
-            text2.setTextColor(stat.count > 0 ? Color.parseColor("#4CAF50") : Color.parseColor("#999999"));
+            int count = (Integer) entry.getValue();
+            String[] parts = key.split("-");
+            if (parts.length == 3) {
+                try {
+                    int year = Integer.parseInt(parts[0]);
+                    int month = Integer.parseInt(parts[1]);
+                    int day = Integer.parseInt(parts[2]);
 
-            // 设置内边距 (px换算，这里直接写数值)
-            itemView.setPadding(40, 30, 40, 30);
-            container.addView(itemView);
+                    CalendarDay calendarDay = CalendarDay.from(year, month, day);
 
-            // 添加分割线
-            View line = new View(this);
-            LinearLayout.LayoutParams lineParams = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 2);
-            lineParams.setMargins(40, 0, 40, 0); // 分割线缩进一点更美观
-            line.setLayoutParams(lineParams);
-            line.setBackgroundColor(Color.parseColor("#F0F0F0"));
-            container.addView(line);
+                    if (count >= 1 && count <= 20) level1.add(calendarDay);
+                    else if (count <= 50) level2.add(calendarDay);
+                    else if (count <= 100) level3.add(calendarDay);
+                    else if (count > 150) level4.add(calendarDay);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+
+        // 3. 添加分级颜色装饰器
+        calendarView.addDecorators(
+                new CustomLevelDecorator(Color.parseColor("#C6E48B"), Color.DKGRAY, level1),  // 浅色用深字
+                new CustomLevelDecorator(Color.parseColor("#7BC96F"), Color.DKGRAY, level2),
+                new CustomLevelDecorator(Color.parseColor("#239A3B"), Color.WHITE, level3),   // 深色用白字
+                new CustomLevelDecorator(Color.parseColor("#196127"), Color.WHITE, level4)    // 墨绿用白字
+        );
+    }
+
+    class CustomLevelDecorator implements DayViewDecorator {
+        private final int bgColor;
+        private final int txtColor;
+        private final HashSet<CalendarDay> dates;
+
+        public CustomLevelDecorator(int bgColor, int txtColor, List<CalendarDay> dates) {
+            this.bgColor = bgColor;
+            this.txtColor = txtColor;
+            this.dates = new HashSet<>(dates);
+        }
+
+        @Override
+        public boolean shouldDecorate(CalendarDay day) {
+            return dates.contains(day);
+        }
+
+        @Override
+        public void decorate(DayViewFacade view) {
+            view.setBackgroundDrawable(new ColorDrawable(bgColor));
+            // 设置日期文字颜色
+            view.addSpan(new ForegroundColorSpan(txtColor));
+            // 💡 强迫症的细节：这里可以加一个 DotSpan 或者特殊的 Span 来代表次数
+            // 如果要显示具体数字，建议在 CalendarView 外部的 TextView 显示（即你已有的 tv_selected_date_stat）
         }
     }
 
-    private void saveModeAndStart(boolean isComplex) {
-        // 启动前的二次检查：如果用户刚才跳去设置但没给权限就回来了
-        if (!Settings.canDrawOverlays(this)) {
-            Toast.makeText(this, "请先开启悬浮窗权限", Toast.LENGTH_SHORT).show();
-            return;
+    private void saveModeAndStart(int mode) {
+        // 获取输入框内容
+        String target = "";
+        if (etTarget != null) {
+            target = etTarget.getText().toString().trim();
         }
 
-        // 保存用户选中的模式（简单/深度）
+        // 保存到本地
         getSharedPreferences("config", MODE_PRIVATE).edit()
-                .putBoolean("is_complex", isComplex).apply();
+                .putInt("release_mode", mode)
+                .putString("current_target", target) // 存入内容（如果是空字符串，Dialog那边就会隐藏）
+                .apply();
 
-        // 启动悬浮球服务
+        // 启动服务
         startService(new Intent(this, FloatingService.class));
-
-        // 提示用户
-        Toast.makeText(this, "悬浮球已启动", Toast.LENGTH_SHORT).show();
-
-        // 将 App 推到后台，不关闭它，这样数据刷新更快
         moveTaskToBack(true);
     }
+
 }

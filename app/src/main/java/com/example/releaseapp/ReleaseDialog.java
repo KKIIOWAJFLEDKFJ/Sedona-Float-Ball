@@ -19,20 +19,27 @@ import java.util.Objects;
 public class ReleaseDialog extends Dialog {
 
     private int step = 0;
-    private boolean isComplexMode; // 模式标识
+    private int releaseMode;
 
     private TextView question;
     private Button btn1, btn2, btn3;
+
+//    private int step = 0;
+    private boolean isComplexMode; // 模式标识
+
+//    private TextView question;
+//    private Button btn1, btn2, btn3;
     private TextView todayCount;
     private TextView mockToast;
 
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
 
     public ReleaseDialog(Context context) {
+
         super(context);
         // 从存储中读取用户选择的模式
-        isComplexMode = context.getSharedPreferences("config", Context.MODE_PRIVATE)
-                .getBoolean("is_complex", true);
+        releaseMode = context.getSharedPreferences("config", Context.MODE_PRIVATE)
+                .getInt("release_mode", 1);
 
         requestWindowFeature(Window.FEATURE_NO_TITLE);
         Objects.requireNonNull(getWindow()).setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
@@ -43,6 +50,23 @@ public class ReleaseDialog extends Dialog {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.layout_release_dialog);
 
+        Window window = getWindow();
+        if (window != null) {
+            // 1. 设置 Dialog 弹出动画（可选，增加丝滑感）
+            window.setWindowAnimations(android.R.style.Animation_Dialog);
+
+            // 2. 获取窗口参数
+            WindowManager.LayoutParams lp = window.getAttributes();
+
+            // 3. 将宽度设置为屏幕宽度的 90% 或 95%，避免紧贴边缘
+            // 或者直接用 MATCH_PARENT，然后在 XML 里的外层 LinearLayout 加 padding
+            lp.width = WindowManager.LayoutParams.MATCH_PARENT;
+            lp.height = WindowManager.LayoutParams.WRAP_CONTENT;
+
+            window.setAttributes(lp);
+        }
+
+
         // 初始化控件
         question = findViewById(R.id.question);
         btn1 = findViewById(R.id.btn1);
@@ -50,6 +74,22 @@ public class ReleaseDialog extends Dialog {
         btn3 = findViewById(R.id.btn3);
         todayCount = findViewById(R.id.today_count);
         mockToast = findViewById(R.id.mock_toast);
+
+        // 1. 找到显示目标的 TextView
+        TextView tvTargetDisplay = findViewById(R.id.tv_target_display);
+
+// 2. 从存储中获取目标
+        String savedTarget = getContext().getSharedPreferences("config", Context.MODE_PRIVATE)
+                .getString("current_target", "");
+
+// 3. 逻辑判断：如果目标为空，则隐藏控件
+        if (savedTarget != null && !savedTarget.trim().isEmpty()) {
+            tvTargetDisplay.setVisibility(View.VISIBLE);
+            tvTargetDisplay.setText("🎯 目标：" + savedTarget);
+        } else {
+            // 💡 强迫症必备：设为 GONE，这样它就不会占据布局空间，下面的问题会顶上来
+            tvTargetDisplay.setVisibility(View.GONE);
+        }
 
         // 初始化显示
         updateStep();
@@ -66,15 +106,26 @@ public class ReleaseDialog extends Dialog {
     }
 
     private void updateStep() {
-        // 简单的文字切换动画
         question.setAlpha(0f);
         question.animate().alpha(1f).setDuration(200);
 
-        if (isComplexMode) {
-            updateStepComplex();
-        } else {
+        // 💡 修改判断逻辑
+        if (releaseMode == 0) {
+            updateStepDirect();
+        } else if (releaseMode == 1) {
             updateStepSimple();
+        } else {
+            updateStepComplex();
         }
+    }
+
+    private void updateStepDirect() {
+        // 无论第几步（其实只有一步），都显示三大想要
+        question.setText("现在是什么想要？");
+        btn3.setVisibility(View.VISIBLE);
+        btn1.setText("想要控制");
+        btn2.setText("想要被认同");
+        btn3.setText("想要安全");
     }
 
     /**
@@ -149,12 +200,16 @@ public class ReleaseDialog extends Dialog {
     }
 
     private void handleAnswer(int buttonIndex) {
-        if (isComplexMode) {
-            handleAnswerComplex(buttonIndex);
-        } else {
+        if (releaseMode == 0) {
+            // 直释版：点任何按钮都直接算释放成功
+            processSuccess();
+        } else if (releaseMode == 1) {
             handleAnswerSimple(buttonIndex);
+        } else {
+            handleAnswerComplex(buttonIndex);
         }
     }
+
 
     private void handleAnswerSimple(int buttonIndex) {
         if (step == 2) {

@@ -1,104 +1,136 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:background="#F8F9FA"
     android:orientation="vertical"
-    android:padding="20dp"
-    android:background="#FAFAFA">
+    android:padding="16dp">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:background="@drawable/bg_card"
-        android:elevation="4dp"
-        android:gravity="center"
+        android:elevation="2dp"
         android:orientation="vertical"
-        android:padding="16dp"
-        android:layout_marginTop="10dp">
+        android:padding="12dp">
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="今日已释放"
-            android:textColor="#888888"
-            android:textSize="14sp" />
+            android:layout_marginLeft="4dp"
+            android:layout_marginBottom="8dp"
+            android:text="释放轨迹"
+            android:textColor="#333333"
+            android:textSize="16sp"
+            android:textStyle="bold" />
 
-        <LinearLayout
+        <com.prolificinteractive.materialcalendarview.MaterialCalendarView
+            android:id="@+id/calendar_view"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            app:mcv_calendarMode="month"
+            app:mcv_selectionColor="#E8F5E9"
+            app:mcv_showOtherDates="all"
+            app:mcv_tileHeight="42dp" />
+
+        <TextView
+            android:id="@+id/tv_selected_date_stat"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:paddingTop="8dp"
+            android:text="点击日期查看细节"
+            android:textColor="#999999"
+            android:textSize="12sp" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:background="@drawable/bg_card"
+        android:elevation="6dp"
+        android:orientation="vertical"
+        android:padding="20dp">
+
+        <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:layout_marginBottom="10dp"
+            android:letterSpacing="0.05"
+            android:text="本次释放目标（可不填）"
+            android:textColor="#78909C"
+            android:textSize="12sp" />
+
+        <EditText
+            android:id="@+id/et_release_target"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="20dp"
+            android:background="@drawable/bg_input_field"
+            android:hint="此刻想放下什么？"
+            android:inputType="text"
+            android:maxLines="1"
+            android:padding="14dp"
+            android:textColor="#263238"
+            android:textSize="15sp" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
             android:orientation="horizontal"
-            android:gravity="bottom">
-            <TextView
-                android:id="@+id/tv_main_today_count"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="0"
-                android:textColor="#333333"
-                android:textSize="42sp"
-                android:textStyle="bold" />
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text=" 次"
-                android:textColor="#888888"
-                android:layout_marginBottom="8dp"
-                android:textSize="14sp" />
+            android:weightSum="3">
+
+            <Button
+                android:id="@+id/btn_mode_direct"
+                style="?android:attr/borderlessButtonStyle"
+                android:layout_width="0dp"
+                android:layout_height="64dp"
+                android:layout_marginRight="6dp"
+                android:layout_weight="1"
+                android:background="@drawable/bg_btn_mode"
+                android:lineSpacingExtra="4dp"
+                android:text="🚀\n快速"
+                android:textColor="#455A64"
+                android:textSize="13sp" />
+
+            <Button
+                android:id="@+id/btn_mode_simple"
+                style="?android:attr/borderlessButtonStyle"
+                android:layout_width="0dp"
+                android:layout_height="64dp"
+                android:layout_marginRight="6dp"
+                android:layout_weight="1"
+                android:background="@drawable/bg_btn_mode"
+                android:lineSpacingExtra="4dp"
+                android:text="✨\n简单"
+                android:textColor="#455A64"
+                android:textSize="13sp" />
+
+            <Button
+                android:id="@+id/btn_mode_complex"
+                style="?android:attr/borderlessButtonStyle"
+                android:layout_width="0dp"
+                android:layout_height="64dp"
+                android:layout_weight="1"
+                android:background="@drawable/bg_btn_mode"
+                android:lineSpacingExtra="4dp"
+                android:text="🌀\n深度"
+                android:textColor="#455A64"
+                android:textSize="13sp" />
         </LinearLayout>
     </LinearLayout>
 
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="近7日记录"
-        android:textColor="#666666"
-        android:textSize="14sp"
         android:layout_marginTop="20dp"
-        android:layout_marginBottom="8dp"/>
-
-    <ScrollView
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1"
-        android:fillViewport="true">
-
-        <LinearLayout
-            android:id="@+id/history_list_container"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:background="@drawable/bg_card"
-            android:padding="8dp"
-            android:elevation="2dp">
-        </LinearLayout>
-    </ScrollView>
-
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:layout_marginTop="16dp">
-
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:gravity="center"
-            android:layout_marginBottom="12dp"
-            android:text="请选择释放模式启动悬浮球"
-            android:textColor="#999999"
-            android:textSize="13sp" />
-
-        <Button
-            android:id="@+id/btn_mode_simple"
-            android:layout_width="match_parent"
-            android:layout_height="56dp"
-            android:layout_marginBottom="8dp"
-            android:text="✨ 简单版 " />
-
-        <Button
-            android:id="@+id/btn_mode_complex"
-            android:layout_width="match_parent"
-            android:layout_height="56dp"
-            android:text="🌀 深度版 " />
-    </LinearLayout>
+        android:gravity="center"
+        android:lineSpacingExtra="4dp"
+        android:text="🚀快速:仅识别  ✨简单:三步引导  🌀深度:完整清理"
+        android:textColor="#B0BEC5"
+        android:textSize="10sp"
+        android:alpha="0.8" />
 
 </LinearLayout>
